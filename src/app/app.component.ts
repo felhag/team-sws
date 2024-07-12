@@ -131,9 +131,6 @@ export class AppComponent {
     const start = new Date(2021, 0, 1);
     const end = this.parseDate(data[data.length - 1][0]);
     return {
-      chart: {
-        width: document.body.clientWidth,
-      },
       title: {
         text: 'Timeline'
       },

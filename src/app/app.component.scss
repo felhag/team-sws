@@ -6,6 +6,14 @@
   }
 }
 
+@media (max-width: 1799px) {
+  .row highcharts-chart {
+    display: block;
+    width: 100%;
+  }
+}
+
 .timeline {
+  display: block;
   width: 100%;
 }
