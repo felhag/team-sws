@@ -1,25 +1,36 @@
 import data from "../data.json";
-import { Component } from '@angular/core';
-import { DatePipe } from '@angular/common';
+import { AfterViewInit, Component } from '@angular/core';
 import { HighchartsChartModule } from 'highcharts-angular';
 
 import Highcharts from 'highcharts';
 import more from 'highcharts/highcharts-more';
 import lollipop from 'highcharts/modules/lollipop';
 import dumbbell from 'highcharts/modules/dumbbell';
+import * as Dashboards from '@highcharts/dashboards';
+import * as DataGrid from '@highcharts/dashboards/datagrid';
+import LayoutModule from '@highcharts/dashboards/modules/layout';
+
 more(Highcharts);
 dumbbell(Highcharts);
 lollipop(Highcharts);
 
+Dashboards.HighchartsPlugin.custom.connectHighcharts(Highcharts);
+Dashboards.DataGridPlugin.custom.connectDataGrid(DataGrid);
+Dashboards.PluginHandler.addPlugin(Dashboards.HighchartsPlugin);
+Dashboards.PluginHandler.addPlugin(Dashboards.DataGridPlugin);
+LayoutModule(Dashboards);
+
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [HighchartsChartModule, DatePipe],
+  imports: [HighchartsChartModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
-export class AppComponent {
-  data: [string, string][];
+export class AppComponent implements AfterViewInit {
+  private readonly data: [string, string][];
+  private readonly dataDate: [Date, string][];
+  private readonly names: string[];
   byDay: { [p: string]: string[] };
   successful: Date[];
 
@@ -31,7 +42,8 @@ export class AppComponent {
 
   constructor() {
     this.data = data as [string, string][];
-
+    this.dataDate = data.filter((item, pos) => data.findIndex(a => a[0] === item[0] && a[1] === item[1]) === pos).map(([date, name]) => [this.parseDate(date), name]);
+    this.names = [...new Set(data.map(d => d[1]))];
     this.byDay = this.data.reduce(function(rv: {[key: string]: string[]}, x) {
       (rv[x[0]] = rv[x[0]] || []).push(x[1]);
       return rv;
@@ -43,6 +55,10 @@ export class AppComponent {
     this.byPersonChart = this.createByPerson();
     this.byYearChart = this.createByYear();
     this.timelineChart = this.createTimeline();
+  }
+
+  ngAfterViewInit() {
+    setTimeout( () => this.streaks() );
   }
 
   private createByDay(): Highcharts.Options {
@@ -68,9 +84,7 @@ export class AppComponent {
   }
 
   private createByPerson<T>(): Highcharts.Options {
-    const unique = data.filter((item, pos) => data.findIndex(a => a[0] === item[0] && a[1] === item[1]) === pos);
-    const names = [...new Set(data.map(d => d[1]))];
-    const almost: [string, string][] = Object.entries(this.byDay).filter(entry => new Set(entry[1]).size === 4).map(e => [e[0], names.find(n => !e[1].includes(n)) as string]);
+    const almost: [string, string][] = Object.entries(this.byDay).filter(entry => new Set(entry[1]).size === 4).map(e => [e[0], this.names.find(n => !e[1].includes(n)) as string]);
     return {
       chart: {
         type: 'bar'
@@ -92,7 +106,7 @@ export class AppComponent {
       }, {
         type: 'bar',
         name: 'Unieke berichten',
-        data: this.groupByAsData(unique.map(u => u[1]))
+        data: this.groupByAsData(this.dataDate.map(u => u[1]))
       }, {
         type: 'bar',
         name: 'Verzaakt',
@@ -108,7 +122,7 @@ export class AppComponent {
         type: 'column',
       },
       title: {
-        text: 'Succes 🥳'
+        text: 'Per jaar'
       },
       xAxis: {
         categories: years.map(year => String(year))
@@ -128,8 +142,6 @@ export class AppComponent {
   }
 
   private createTimeline(): Highcharts.Options {
-    const start = new Date(2021, 0, 1);
-    const end = this.parseDate(data[data.length - 1][0]);
     return {
       title: {
         text: 'Timeline'
@@ -137,8 +149,8 @@ export class AppComponent {
       xAxis: {
         type: 'datetime',
         title: {text: null},
-        min: start.getTime(),
-        max: end.getTime()
+        min: new Date(2021, 0, 1).getTime(),
+        max: new Date().getTime()
       },
       legend: {enabled: false},
       yAxis: {
@@ -150,10 +162,18 @@ export class AppComponent {
           return new Date(parseInt(this.key as string)).toLocaleDateString()
         }
       },
+      plotOptions: {
+        series: {
+          cumulative: true,
+        }
+      },
       series: [{
         type: 'lollipop',
         data: this.successful.map(e => [e.getTime(), 5]),
         marker: { radius: 5, enabled: true }
+      }, {
+        type: 'line',
+        data: this.data.map(d => [this.parseDate(d[0]).getTime(), 1]).reduce((acc) => [acc[0], acc[1] + 1], [new Date().getTime(), 0]),
       }]
     };
   }
@@ -197,4 +217,74 @@ export class AppComponent {
       return { ...prev, [groupKey]: group };
     }, {})).map(e => [e[0], e[1].length]);
   };
+
+  private streaks() {
+    const streaks: [string, Date[]][] = [];
+    this.names.forEach(n => {
+      this.dataDate.filter(dd => dd[1] === n).reduce((prev, cur) => {
+        if (!prev.length || cur[0].getTime() - prev[prev.length - 1].getTime() <= 25 * 60 * 60 * 1000) {
+          return [...prev, cur[0]];
+        } else {
+          if (prev.length > 1) {
+            streaks.push([n, prev]);
+          }
+          return [cur[0]];
+        }
+      }, [] as Date[]);
+    });
+
+    Dashboards.board('dashboard', {
+      dataPool: {
+        connectors: [{
+          id: 'data',
+          type: 'JSON',
+          options: {
+            firstRowAsNames: false,
+            columnNames: ['Naam','Dagen','Van','Tot'],
+            data: streaks
+              .sort((a, b) => b[1].length - a[1].length)
+              .slice(0, 10)
+              .map(([name, dates], idx) => [
+                this.medal(idx) + name,
+                dates.length + ' dagen',
+                dates[0].toLocaleDateString(),
+                dates.pop()!.toLocaleDateString()
+              ])
+          },
+        }]
+      },
+      gui: {
+        layouts: [{
+          id: 'layout-1',
+          rows: [{
+            cells: [
+              { id: 'dashboard-col-1' },
+              { id: 'dashboard-col-2' }
+            ]
+          }]
+        }]
+      },
+      components: [{
+        title: 'Succes',
+        renderTo: 'dashboard-col-1',
+        type: 'KPI',
+        value: '🏆 ' + this.successful.length
+      }, {
+        title: 'Streaks',
+        renderTo: 'dashboard-col-2',
+        connector: { id: 'data' },
+        type: 'DataGrid',
+        // dataGridOptions: { editable: false }
+      }]
+    });
+  }
+
+  private medal(idx: number) {
+    switch (idx){
+      case 0: return '🥇';
+      case 1: return '🥈';
+      case 2: return '🥉';
+      default: return '🏅';
+    }
+  }
 }
