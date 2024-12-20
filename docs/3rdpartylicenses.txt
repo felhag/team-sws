@@ -5,6 +5,11 @@ License: "https://www.highcharts.com/license"
 
 
 --------------------------------------------------------------------------------
+Package: @highcharts/dashboards
+License: "https://www.highcharts.com/license"
+
+
+--------------------------------------------------------------------------------
 Package: @angular/core
 License: "MIT"
 
