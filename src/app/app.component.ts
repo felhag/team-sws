@@ -21,11 +21,10 @@ Dashboards.PluginHandler.addPlugin(Dashboards.DataGridPlugin);
 LayoutModule(Dashboards);
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [HighchartsChartModule],
-  templateUrl: './app.component.html',
-  styleUrl: './app.component.scss'
+    selector: 'app-root',
+    imports: [HighchartsChartModule],
+    templateUrl: './app.component.html',
+    styleUrl: './app.component.scss'
 })
 export class AppComponent implements AfterViewInit {
   private readonly data: [string, string][];
