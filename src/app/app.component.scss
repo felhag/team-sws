@@ -16,6 +16,10 @@
   }
 }
 
+::ng-deep #dashboard-col-1 thead {
+  display: none;
+}
+
 .timeline {
   display: block;
   width: 100%;

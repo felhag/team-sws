@@ -15,9 +15,9 @@ dumbbell(Highcharts);
 lollipop(Highcharts);
 
 Dashboards.HighchartsPlugin.custom.connectHighcharts(Highcharts);
-Dashboards.DataGridPlugin.custom.connectDataGrid(DataGrid);
+Dashboards.GridPlugin.custom.connectGrid(DataGrid);
 Dashboards.PluginHandler.addPlugin(Dashboards.HighchartsPlugin);
-Dashboards.PluginHandler.addPlugin(Dashboards.DataGridPlugin);
+Dashboards.PluginHandler.addPlugin(Dashboards.GridPlugin);
 LayoutModule(Dashboards);
 
 @Component({
@@ -82,7 +82,7 @@ export class AppComponent implements AfterViewInit {
     };
   }
 
-  private createByPerson<T>(): Highcharts.Options {
+  private createByPerson(): Highcharts.Options {
     const almost: [string, string][] = Object.entries(this.byDay).filter(entry => new Set(entry[1]).size === 4).map(e => [e[0], this.names.find(n => !e[1].includes(n)) as string]);
     return {
       chart: {
@@ -232,10 +232,26 @@ export class AppComponent implements AfterViewInit {
       }, [] as Date[]);
     });
 
+    const days = (this.dataDate[this.dataDate.length - 1][0].getTime() - this.dataDate[0][0].getTime()) / (24 * 60 * 60 * 1000);
     Dashboards.board('dashboard', {
       dataPool: {
         connectors: [{
           id: 'data',
+          type: 'JSON',
+          options: {
+            firstRowAsNames: false,
+            data: [
+              ['Eerste punt', this.dataDate[0][0].toLocaleDateString()],
+              ['Laatste punt', this.dataDate[this.dataDate.length - 1][0].toLocaleDateString()],
+              ['Dagen', days],
+              ['Dagen met punten', this.dataDate.length],
+              ['Eerste succes', this.successful[0].toLocaleDateString()],
+              ['Laatste succes', this.successful[this.successful.length - 1].toLocaleDateString()],
+              ['Succes 🏆', `${this.successful.length} (${Math.round(this.successful.length / days * 100)}%)`],
+            ]
+          },
+        }, {
+          id: 'streaks',
           type: 'JSON',
           options: {
             firstRowAsNames: false,
@@ -264,16 +280,15 @@ export class AppComponent implements AfterViewInit {
         }]
       },
       components: [{
-        title: 'Succes',
+        // title: 'Succes',
         renderTo: 'dashboard-col-1',
-        type: 'KPI',
-        value: '🏆 ' + this.successful.length
+        connector: { id: 'data' },
+        type: 'DataGrid',
       }, {
         title: 'Streaks',
         renderTo: 'dashboard-col-2',
-        connector: { id: 'data' },
+        connector: { id: 'streaks' },
         type: 'DataGrid',
-        // dataGridOptions: { editable: false }
       }]
     });
   }
