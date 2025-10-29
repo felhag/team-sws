@@ -158,7 +158,8 @@ export class AppComponent implements AfterViewInit {
       },
       tooltip: {
         formatter: function () {
-          return new Date(parseInt(this.key as string)).toLocaleDateString()
+          return this.point.series.type === 'line' ? `${this.y} puntjes` :
+          new Date(parseInt(this.key as string)).toLocaleDateString()
         }
       },
       plotOptions: {
@@ -168,11 +169,11 @@ export class AppComponent implements AfterViewInit {
       },
       series: [{
         type: 'lollipop',
-        data: this.successful.map(e => [e.getTime(), 5]),
+        data: this.successful.map(e => [e.getTime(), this.data.length * .6]),
         marker: { radius: 5, enabled: true }
       }, {
         type: 'line',
-        data: this.data.map(d => [this.parseDate(d[0]).getTime(), 1]).reduce((acc) => [acc[0], acc[1] + 1], [new Date().getTime(), 0]),
+        data: this.data.map((d, idx) => [this.parseDate(d[0]).getTime(), idx + 1]).sort((a, b) => a[0] - b[0])
       }]
     };
   }
@@ -263,8 +264,8 @@ export class AppComponent implements AfterViewInit {
               .map(([name, dates], idx) => [
                 this.medal(idx) + name,
                 dates.length + ' dagen',
-                dates[0].toLocaleDateString(),
-                dates.pop()!.toLocaleDateString()
+                this.formatDate(dates[0]),
+                this.formatDate(dates.pop()!)
               ])
           },
         }]
@@ -292,6 +293,10 @@ export class AppComponent implements AfterViewInit {
         type: 'DataGrid',
       }]
     });
+  }
+
+  private formatDate(date: Date) {
+    return date.toLocaleDateString('nl-NL');
   }
 
   private medal(idx: number) {
