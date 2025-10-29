@@ -1,6 +1,6 @@
-// const args = process.argv.slice(2);
+const args = process.argv.slice(2)[0];
 const fs = require('node:fs');
-fs.readFile('C:\\import\\chat.txt', 'utf8', (err, data) => {
+fs.readFile(args, 'utf8', (err, data) => {
     const re = /(\d{2}\/\d{2}\/\d{4}), 13:37 - (.*): (.*)/;
     const lines = data.split('\n')
         .map(line => re.exec(line))
