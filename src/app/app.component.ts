@@ -220,7 +220,7 @@ export class AppComponent implements AfterViewInit {
   private streaks() {
     const streaks: [string, Date[]][] = [];
     this.names.forEach(n => {
-      this.dataDate.filter(dd => dd[1] === n).reduce((prev, cur) => {
+      const current = this.dataDate.filter(dd => dd[1] === n).reduce((prev, cur) => {
         if (!prev.length || cur[0].getTime() - prev[prev.length - 1].getTime() <= 25 * 60 * 60 * 1000) {
           return [...prev, cur[0]];
         } else {
@@ -230,9 +230,10 @@ export class AppComponent implements AfterViewInit {
           return [cur[0]];
         }
       }, [] as Date[]);
+      streaks.push([n, current])
     });
 
-    const days = (this.dataDate[this.dataDate.length - 1][0].getTime() - this.dataDate[0][0].getTime()) / (24 * 60 * 60 * 1000);
+    const days = Math.round((this.dataDate[this.dataDate.length - 1][0].getTime() - this.dataDate[0][0].getTime()) / (24 * 60 * 60 * 1000));
     Dashboards.board('dashboard', {
       dataPool: {
         connectors: [{
@@ -241,13 +242,13 @@ export class AppComponent implements AfterViewInit {
           options: {
             firstRowAsNames: false,
             data: [
-              ['Eerste punt', this.dataDate[0][0].toLocaleDateString()],
-              ['Laatste punt', this.dataDate[this.dataDate.length - 1][0].toLocaleDateString()],
+              ['Eerste punt', this.formatDate(this.dataDate[0][0])],
+              ['Laatste punt', this.formatDate(this.dataDate[this.dataDate.length - 1][0])],
               ['Dagen', days],
-              ['Dagen met punten', this.dataDate.length],
-              ['Eerste succes', this.successful[0].toLocaleDateString()],
-              ['Laatste succes', this.successful[this.successful.length - 1].toLocaleDateString()],
+              ['Dagen met punt', `${this.dataDate.length} (${Math.round(this.dataDate.length / days * 100)}%)`],
               ['Succes 🏆', `${this.successful.length} (${Math.round(this.successful.length / days * 100)}%)`],
+              ['Eerste succes', this.formatDate(this.successful[0])],
+              ['Laatste succes', this.formatDate(this.successful[this.successful.length - 1])],
             ]
           },
         }, {
