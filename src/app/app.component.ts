@@ -21,10 +21,10 @@ Dashboards.PluginHandler.addPlugin(Dashboards.GridPlugin);
 LayoutModule(Dashboards);
 
 @Component({
-    selector: 'app-root',
-    imports: [HighchartsChartModule],
-    templateUrl: './app.component.html',
-    styleUrl: './app.component.scss'
+  selector: 'app-root',
+  imports: [HighchartsChartModule],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.scss'
 })
 export class AppComponent implements AfterViewInit {
   private readonly data: [string, string][];
@@ -34,30 +34,22 @@ export class AppComponent implements AfterViewInit {
   successful: Date[];
 
   Highcharts: typeof Highcharts = Highcharts;
-  byDayChart: Highcharts.Options;
-  byYearChart: Highcharts.Options;
-  byPersonChart: Highcharts.Options;
-  timelineChart: Highcharts.Options;
 
   constructor() {
     this.data = data as [string, string][];
     this.dataDate = data.filter((item, pos) => data.findIndex(a => a[0] === item[0] && a[1] === item[1]) === pos).map(([date, name]) => [this.parseDate(date), name]);
     this.names = [...new Set(data.map(d => d[1]))];
-    this.byDay = this.data.reduce(function(rv: {[key: string]: string[]}, x) {
+    this.byDay = this.data.reduce(function (rv: { [key: string]: string[] }, x) {
       (rv[x[0]] = rv[x[0]] || []).push(x[1]);
       return rv;
     }, {});
     this.successful = Object.entries(this.byDay).filter(entry => new Set(entry[1]).size === 5).map(entry => this.parseDate(entry[0]));
 
     this.initHighcharts();
-    this.byDayChart = this.createByDay();
-    this.byPersonChart = this.createByPerson();
-    this.byYearChart = this.createByYear();
-    this.timelineChart = this.createTimeline();
   }
 
   ngAfterViewInit() {
-    setTimeout( () => this.streaks() );
+    setTimeout(() => this.streaks());
   }
 
   private createByDay(): Highcharts.Options {
@@ -159,7 +151,7 @@ export class AppComponent implements AfterViewInit {
       tooltip: {
         formatter: function () {
           return this.point.series.type === 'line' ? `${this.y} puntjes` :
-          new Date(parseInt(this.key as string)).toLocaleDateString()
+            new Date(parseInt(this.key as string)).toLocaleDateString()
         }
       },
       plotOptions: {
@@ -170,7 +162,7 @@ export class AppComponent implements AfterViewInit {
       series: [{
         type: 'lollipop',
         data: this.successful.map(e => [e.getTime(), this.data.length * .6]),
-        marker: { radius: 5, enabled: true }
+        marker: {radius: 5, enabled: true}
       }, {
         type: 'line',
         data: this.data.map((d, idx) => [this.parseDate(d[0]).getTime(), idx + 1]).sort((a, b) => a[0] - b[0])
@@ -179,7 +171,7 @@ export class AppComponent implements AfterViewInit {
   }
 
   private initHighcharts() {
-    const style = { style: { color: '#fff'} };
+    const style = {style: {color: '#fff'}};
     Highcharts.setOptions({
       time: {
         timezone: 'Europe/Amsterdam'
@@ -189,7 +181,7 @@ export class AppComponent implements AfterViewInit {
       },
       title: style,
       subtitle: style,
-      legend: { itemStyle: {color: '#fff'} },
+      legend: {itemStyle: {color: '#fff'}},
       xAxis: {
         title: style,
         labels: style
@@ -198,9 +190,9 @@ export class AppComponent implements AfterViewInit {
         title: style,
         labels: style
       },
-      plotOptions: { series: { borderColor: '#424242' } },
-      navigation: { buttonOptions: { enabled: false } },
-      accessibility: { enabled: false }
+      plotOptions: {series: {borderColor: '#424242'}},
+      navigation: {buttonOptions: {enabled: false}},
+      accessibility: {enabled: false}
     });
   }
 
@@ -209,12 +201,12 @@ export class AppComponent implements AfterViewInit {
     return new Date(split[2], split[1] - 1, split[0]);
   }
 
-  private groupByAsData <T>(arr: T[], key?: (item: T) => any) {
+  private groupByAsData<T>(arr: T[], key?: (item: T) => any) {
     return Object.entries(arr.reduce<Record<string, T[]>>((prev, curr) => {
       const groupKey = key ? key(curr) : curr;
       const group = prev[groupKey] || [];
       group.push(curr);
-      return { ...prev, [groupKey]: group };
+      return {...prev, [groupKey]: group};
     }, {})).map(e => [e[0], e[1].length]);
   };
 
@@ -257,7 +249,7 @@ export class AppComponent implements AfterViewInit {
           type: 'JSON',
           options: {
             firstRowAsNames: false,
-            columnNames: ['Naam','Dagen','Van','Tot'],
+            columnNames: ['Naam', 'Dagen', 'Van', 'Tot'],
             data: streaks
               .sort((a, b) => b[1].length - a[1].length)
               .slice(0, 10)
@@ -272,25 +264,63 @@ export class AppComponent implements AfterViewInit {
       },
       gui: {
         layouts: [{
-          id: 'layout-1',
           rows: [{
             cells: [
-              { id: 'dashboard-col-1' },
-              { id: 'dashboard-col-2' }
+              {id: 'dashboard-year'},
+              {id: 'dashboard-day'},
+              {id: 'dashboard-person'},
             ]
-          }]
+          },
+            {
+              cells: [
+                {id: 'dashboard-timeline'}
+              ]
+            },
+
+            {
+              cells: [
+                {id: 'dashboard-col-1'},
+                {id: 'dashboard-col-2'}
+              ]
+            }]
         }]
       },
       components: [{
-        // title: 'Succes',
+        renderTo: 'dashboard-year',
+        type: 'Highcharts',
+        chartOptions: this.createByYear()
+      }, {
+        renderTo: 'dashboard-day',
+        type: 'Highcharts',
+        chartOptions: this.createByDay()
+      }, {
+        renderTo: 'dashboard-person',
+        type: 'Highcharts',
+        chartOptions: this.createByPerson()
+      }, {
+        renderTo: 'dashboard-timeline',
+        type: 'Highcharts',
+        chartOptions: this.createTimeline()
+      }, {
+        title: 'Stats',
         renderTo: 'dashboard-col-1',
-        connector: { id: 'data' },
+        connector: {id: 'data'},
         type: 'DataGrid',
+        gridOptions: {
+          credits: {
+            enabled: false
+          }
+        }
       }, {
         title: 'Streaks',
         renderTo: 'dashboard-col-2',
-        connector: { id: 'streaks' },
+        connector: {id: 'streaks'},
         type: 'DataGrid',
+        gridOptions: {
+          credits: {
+            enabled: false
+          }
+        }
       }]
     });
   }
@@ -300,11 +330,15 @@ export class AppComponent implements AfterViewInit {
   }
 
   private medal(idx: number) {
-    switch (idx){
-      case 0: return '🥇';
-      case 1: return '🥈';
-      case 2: return '🥉';
-      default: return '🏅';
+    switch (idx) {
+      case 0:
+        return '🥇';
+      case 1:
+        return '🥈';
+      case 2:
+        return '🥉';
+      default:
+        return '🏅';
     }
   }
 }

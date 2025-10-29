@@ -1,26 +1,12 @@
 @import url("https://code.highcharts.com/dashboards/3.3.0/css/datagrid.css");
 @import url("https://code.highcharts.com/dashboards/3.3.0/css/dashboards.css");
 
-@media (min-width: 1200px) {
-  .row {
-    display: grid;
-    gap: 32px;
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 1799px) {
-  .row highcharts-chart {
-    display: block;
-    width: 100%;
+@media (max-width: 1200px) {
+  ::ng-deep .highcharts-dashboards-row  {
+    flex-direction: column;
   }
 }
 
 ::ng-deep #dashboard-col-1 thead {
   display: none;
-}
-
-.timeline {
-  display: block;
-  width: 100%;
 }
