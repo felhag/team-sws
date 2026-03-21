@@ -1,20 +1,44 @@
+import fs from 'fs';
+import readline from 'readline';
+import unzipper from 'unzipper';
+
 const args = process.argv.slice(2)[0];
-const fs = require('node:fs');
-fs.readFile(args, 'utf8', (err, data) => {
-    const re = /(\d{2}\/\d{2}\/\d{4}), 13:37 - (.*): (.*)/;
-    const lines = data.split('\n')
-        .map(line => re.exec(line))
-        .filter(line => !!line)
-        .map(line => re.exec(line))
-        .map(line => [line[1], line[2].startsWith('+') ? `Davon` : line[2].substring(0, line[2].indexOf(' '))]);
+const lineRegex = /(\d{2}\/\d{2}\/\d{4}), 13:37 - (.*): (.*)/;
 
-    const output = './src/data.json';
-    fs.rmSync(output, { force: true, });
-    fs.writeFile(output, JSON.stringify(lines), { flag: 'wx' } , err => {
-        if (err) {
-            console.log(err)
-        }
-    });
+if (args.endsWith('.zip')) {
+  await processStream(fs.createReadStream(args).pipe(unzipper.ParseOne()));
+} else if (args.endsWith('.txt')) {
+  await processStream(fs.createReadStream(args));
+}
 
-    console.log(`Imported ${lines.length} lines`);
-});
+async function processStream(stream) {
+  const rl = readline.createInterface({ input: stream });
+  const lines = [];
+  let total = 0;
+
+  for await (const line of rl) {
+    const parsed = processData(line);
+    total++;
+    if (parsed) {
+      lines.push(parsed);
+    }
+  }
+
+  const output = './src/data.json';
+  fs.rmSync(output, { force: true, });
+  fs.writeFile(output, JSON.stringify(lines), { flag: 'wx' } , err => {
+    if (err) {
+      console.log(err)
+    }
+  });
+
+  console.log(`Imported ${lines.length}/${total} lines`);
+}
+
+function processData(line) {
+  if (!lineRegex.test(line)) {
+    return;
+  }
+  const parsed = lineRegex.exec(line);
+  return [parsed[1], parsed[2].startsWith('+') ? `Davon` : parsed[2].substring(0, parsed[2].indexOf(' '))];
+}

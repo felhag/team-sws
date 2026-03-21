@@ -35,7 +35,9 @@
               }
             ],
             "styles": [
-              "src/styles.scss"
+              "src/styles.scss",
+              "node_modules/@highcharts/dashboards/css/datagrid.css",
+              "node_modules/@highcharts/dashboards/css/dashboards.css"
             ],
             "scripts": []
           },

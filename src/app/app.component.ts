@@ -211,20 +211,10 @@ export class AppComponent implements AfterViewInit {
   };
 
   private streaks() {
-    const streaks: [string, Date[]][] = [];
-    this.names.forEach(n => {
-      const current = this.dataDate.filter(dd => dd[1] === n).reduce((prev, cur) => {
-        if (!prev.length || cur[0].getTime() - prev[prev.length - 1].getTime() <= 25 * 60 * 60 * 1000) {
-          return [...prev, cur[0]];
-        } else {
-          if (prev.length > 1) {
-            streaks.push([n, prev]);
-          }
-          return [cur[0]];
-        }
-      }, [] as Date[]);
-      streaks.push([n, current])
-    });
+    const streaks: [string, Date[]][] = this.names.flatMap(n =>
+      this.computeStreaks(this.dataDate.filter(dd => dd[1] === n).map(dd => dd[0]))
+        .map(dates => [n, dates] as [string, Date[]])
+    );
 
     const days = Math.round((this.dataDate[this.dataDate.length - 1][0].getTime() - this.dataDate[0][0].getTime()) / (24 * 60 * 60 * 1000));
     Dashboards.board('dashboard', {
@@ -260,6 +250,21 @@ export class AppComponent implements AfterViewInit {
                 this.formatDate(dates.pop()!)
               ])
           },
+        }, {
+          id: 'successStreaks',
+          type: 'JSON',
+          options: {
+            firstRowAsNames: false,
+            columnNames: ['Dagen', 'Van', 'Tot'],
+            data: this.computeStreaks(this.successful)
+              .sort((a, b) => b.length - a.length)
+              .slice(0, 10)
+              .map((dates, idx) => [
+                this.medal(idx) + dates.length + ' dagen',
+                this.formatDate(dates[0]),
+                this.formatDate(dates[dates.length - 1])
+              ])
+          },
         }]
       },
       gui: {
@@ -280,7 +285,8 @@ export class AppComponent implements AfterViewInit {
             {
               cells: [
                 {id: 'dashboard-col-1'},
-                {id: 'dashboard-col-2'}
+                {id: 'dashboard-col-2'},
+                {id: 'dashboard-col-3'}
               ]
             }]
         }]
@@ -321,12 +327,37 @@ export class AppComponent implements AfterViewInit {
             enabled: false
           }
         }
+      }, {
+        title: 'Succes streaks',
+        renderTo: 'dashboard-col-3',
+        connector: {id: 'successStreaks'},
+        type: 'DataGrid',
+        gridOptions: {
+          credits: {
+            enabled: false
+          }
+        }
       }]
     });
   }
 
   private formatDate(date: Date) {
     return date.toLocaleDateString('nl-NL');
+  }
+
+  private computeStreaks(dates: Date[]): Date[][] {
+    const streaks: Date[][] = [];
+    let current: Date[] = [];
+    for (const date of dates) {
+      if (!current.length || date.getTime() - current[current.length - 1].getTime() <= 25 * 60 * 60 * 1000) {
+        current.push(date);
+      } else {
+        if (current.length > 1) streaks.push(current);
+        current = [date];
+      }
+    }
+    if (current.length > 1) streaks.push(current);
+    return streaks;
   }
 
   private medal(idx: number) {
