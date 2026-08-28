@@ -27,6 +27,9 @@ LayoutModule(Dashboards);
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements AfterViewInit {
+  private static readonly trendWindowMonths = 6;
+  private static readonly names = [...new Set(data.map(d => d[1]))];
+
   private readonly data: [string, string][];
   private readonly dataDate: [Date, string][];
   private readonly names: string[];
@@ -38,7 +41,7 @@ export class AppComponent implements AfterViewInit {
   constructor() {
     this.data = data as [string, string][];
     this.dataDate = data.filter((item, pos) => data.findIndex(a => a[0] === item[0] && a[1] === item[1]) === pos).map(([date, name]) => [this.parseDate(date), name]);
-    this.names = [...new Set(data.map(d => d[1]))];
+    this.names = AppComponent.names;
     this.byDay = this.data.reduce(function (rv: { [key: string]: string[] }, x) {
       (rv[x[0]] = rv[x[0]] || []).push(x[1]);
       return rv;
@@ -143,15 +146,27 @@ export class AppComponent implements AfterViewInit {
         min: new Date(2021, 0, 1).getTime(),
         max: new Date().getTime()
       },
-      legend: {enabled: false},
-      yAxis: {
+      legend: {enabled: true},
+      yAxis: [{
         title: {text: null},
         visible: false
-      },
+      }, {
+        title: {text: null},
+        opposite: true,
+        min: 0,
+        max: AppComponent.names.length,
+        tickInterval: 1
+      }],
       tooltip: {
         formatter: function () {
-          return this.point.series.type === 'line' ? `${this.y} puntjes` :
-            new Date(parseInt(this.key as string)).toLocaleDateString()
+          switch (this.point.series.name) {
+            case 'Trend':
+              return `gemiddeld ${(this.y as number).toFixed(1)} van ${AppComponent.names.length} per dag`;
+            case 'Puntjes':
+              return `${this.y} puntjes`;
+            default:
+              return new Date(parseInt(this.key as string)).toLocaleDateString();
+          }
         }
       },
       plotOptions: {
@@ -161,13 +176,46 @@ export class AppComponent implements AfterViewInit {
       },
       series: [{
         type: 'lollipop',
-        data: this.successful.map(e => [e.getTime(), this.data.length * .6]),
+        name: 'Succes',
+        data: this.successful.map(e => [e.getTime(), this.dataDate.length * .6]),
         marker: {radius: 5, enabled: true}
       }, {
         type: 'line',
-        data: this.data.map((d, idx) => [this.parseDate(d[0]).getTime(), idx + 1]).sort((a, b) => a[0] - b[0])
+        name: 'Puntjes',
+        data: this.dataDate.map(([date]) => date.getTime()).sort((a, b) => a - b).map((time, idx) => [time, idx + 1])
+      }, {
+        type: 'spline',
+        name: 'Trend',
+        yAxis: 1,
+        cumulative: false,
+        dashStyle: 'ShortDash',
+        marker: {enabled: false},
+        data: this.rollingTrend()
       }]
     };
+  }
+
+  /**
+   * Gemiddeld aantal personen met een puntje per dag, over het voorgaande venster van
+   * {@link trendWindowMonths} maanden. Loopt dus van 0 tot {@link names}.length.
+   */
+  private rollingTrend(): [number, number][] {
+    const day = 24 * 60 * 60 * 1000;
+    const times = this.dataDate.map(([date]) => date.getTime()).sort((a, b) => a - b);
+    const first = new Date(times[0]);
+    const last = times[times.length - 1];
+    const trend: [number, number][] = [];
+    let from = 0;
+    let to = 0;
+    // Start pas als het venster helemaal gevuld is, anders lijkt het begin kunstmatig laag.
+    for (const date = new Date(first.getFullYear(), first.getMonth() + AppComponent.trendWindowMonths, first.getDate()); date.getTime() <= last; date.setDate(date.getDate() + 1)) {
+      const windowStart = new Date(date.getFullYear(), date.getMonth() - AppComponent.trendWindowMonths, date.getDate());
+      while (to < times.length && times[to] <= date.getTime()) to++;
+      while (times[from] < windowStart.getTime()) from++;
+      const days = Math.round((date.getTime() - windowStart.getTime()) / day);
+      trend.push([date.getTime(), (to - from) / days]);
+    }
+    return trend;
   }
 
   private initHighcharts() {
@@ -217,6 +265,7 @@ export class AppComponent implements AfterViewInit {
     );
 
     const days = Math.round((this.dataDate[this.dataDate.length - 1][0].getTime() - this.dataDate[0][0].getTime()) / (24 * 60 * 60 * 1000));
+    const daysWithPoint = Object.keys(this.byDay).length;
     Dashboards.board('dashboard', {
       dataPool: {
         connectors: [{
@@ -228,7 +277,7 @@ export class AppComponent implements AfterViewInit {
               ['Eerste punt', this.formatDate(this.dataDate[0][0])],
               ['Laatste punt', this.formatDate(this.dataDate[this.dataDate.length - 1][0])],
               ['Dagen', days],
-              ['Dagen met punt', `${this.dataDate.length} (${Math.round(this.dataDate.length / days * 100)}%)`],
+              ['Dagen met punt', `${daysWithPoint} (${Math.round(daysWithPoint / days * 100)}%)`],
               ['Succes 🏆', `${this.successful.length} (${Math.round(this.successful.length / days * 100)}%)`],
               ['Eerste succes', this.formatDate(this.successful[0])],
               ['Laatste succes', this.formatDate(this.successful[this.successful.length - 1])],
